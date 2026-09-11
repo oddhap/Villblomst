@@ -59,21 +59,20 @@ struct FavoriteTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topTrailing) {
-                Group {
-                    if let thumb = store.favoriteThumbnails[favorite.slug] {
-                        Image(nsImage: thumb)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Rectangle()
-                            .fill(Palette.leafLight)
-                            .overlay(ProgressView().controlSize(.small))
-                    }
+            Group {
+                if let thumb = store.favoriteThumbnails[favorite.slug] {
+                    Image(nsImage: thumb)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Rectangle()
+                        .fill(Palette.leafLight)
+                        .overlay(ProgressView().controlSize(.small))
                 }
-                .frame(width: 108, height: 68)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-
+            }
+            .frame(width: 108, height: 68)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(alignment: .topTrailing) {
                 Button {
                     store.removeFavorite(favorite)
                 } label: {
@@ -87,12 +86,42 @@ struct FavoriteTile: View {
                 .padding(5)
                 .help(loc.t("favorites.remove"))
             }
+            .overlay(alignment: .topLeading) {
+                if store.screenCount > 1 {
+                    Menu {
+                        ForEach(Array(0..<store.screenCount), id: \.self) { index in
+                            Button(store.screenLabel(index)) {
+                                Task { await store.assign(favorite, toScreen: index) }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "display")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(5)
+                            .background(Circle().fill(.black.opacity(0.5)))
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .padding(5)
+                    .help(loc.t("favorites.assign"))
+                }
+            }
 
             Text(favorite.title)
                 .font(.system(.caption2, design: .rounded))
                 .foregroundStyle(Palette.ink.opacity(0.8))
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
+
+            if !assignedScreens.isEmpty {
+                Text(String(format: loc.t("favorites.assignedScreens"),
+                            assignedScreens.map { String($0 + 1) }.joined(separator: ", ")))
+                    .font(.system(size: 9, design: .rounded).weight(.medium))
+                    .foregroundStyle(Palette.leafDeep)
+                    .lineLimit(1)
+            }
         }
         .frame(width: 108, alignment: .leading)
         .contentShape(Rectangle())
@@ -100,5 +129,9 @@ struct FavoriteTile: View {
             Task { await store.applyFavorite(favorite) }
         }
         .help(loc.t("favorites.apply"))
+    }
+
+    private var assignedScreens: [Int] {
+        store.assignedScreenNumbers(for: favorite)
     }
 }

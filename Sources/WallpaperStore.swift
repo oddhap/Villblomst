@@ -5,6 +5,7 @@ import ImageIO
 struct Favorite: Codable, Identifiable, Hashable {
     let slug: String
     let title: String
+    var remoteURL: String? = nil
     var id: String { slug }
 }
 
@@ -19,9 +20,12 @@ final class WallpaperStore: ObservableObject {
     @Published var isPreparing = false
     @Published var selectedThemeID: String = UserDefaults.standard.string(forKey: "villblomst.theme") ?? "alle"
     @Published var sourceID: String = UserDefaults.standard.string(forKey: "villblomst.source") ?? WallpaperSource.bing.rawValue
+    @Published var separatePerScreen: Bool = UserDefaults.standard.bool(forKey: "villblomst.perScreen")
+    @Published var screenAssignments: [String: Favorite] = [:]
     @Published var favorites: [Favorite] = []
     @Published var favoriteThumbnails: [String: NSImage] = [:]
     private(set) var currentSlug: String?
+    private var currentRemoteURL: URL?
 
     private(set) var statusState: StoreStatus = .idle
     var status: String { Localization.shared.text(for: statusState) }
@@ -30,6 +34,28 @@ final class WallpaperStore: ObservableObject {
     var sourceName: String { Localization.shared.t("source.\(source.rawValue)") }
     var sourceAttribution: String {
         source == .bing ? "bingwallpaper.anerg.com" : "Windows Spotlight (Microsoft)"
+    }
+
+    var screenCount: Int { NSScreen.screens.count }
+    private var usesSeparatePerScreen: Bool { separatePerScreen && screenCount > 1 }
+
+    func screenLabel(_ index: Int) -> String {
+        if index == 0 {
+            return String(format: Localization.shared.t("screen.labelPrimary"), index + 1)
+        }
+        return String(format: Localization.shared.t("screen.label"), index + 1)
+    }
+
+    func assignedScreenNumbers(for favorite: Favorite) -> [Int] {
+        screenAssignments
+            .filter { $0.value.slug == favorite.slug }
+            .compactMap { Int($0.key) }
+            .sorted()
+    }
+
+    func togglePerScreen() {
+        separatePerScreen.toggle()
+        UserDefaults.standard.set(separatePerScreen, forKey: "villblomst.perScreen")
     }
 
     var isCurrentFavorite: Bool {
@@ -56,6 +82,7 @@ final class WallpaperStore: ObservableObject {
     private let poolFile: URL
     private let stateFile: URL
     private let favoritesFile: URL
+    private let screensFile: URL
 
     private struct State: Codable {
         var recent: [String]
@@ -72,8 +99,10 @@ final class WallpaperStore: ObservableObject {
         poolFile = support.appendingPathComponent("pool.json")
         stateFile = support.appendingPathComponent("state.json")
         favoritesFile = support.appendingPathComponent("favorites.json")
+        screensFile = support.appendingPathComponent("screens.json")
         try? FileManager.default.createDirectory(at: imageFolder, withIntermediateDirectories: true)
         loadFavorites()
+        loadScreenAssignments()
         restoreState()
     }
 
@@ -102,6 +131,18 @@ final class WallpaperStore: ObservableObject {
         }
     }
 
+    private func loadScreenAssignments() {
+        guard let data = try? Data(contentsOf: screensFile),
+              let saved = try? JSONDecoder().decode([String: Favorite].self, from: data) else { return }
+        screenAssignments = saved
+    }
+
+    private func persistScreenAssignments() {
+        if let data = try? JSONEncoder().encode(screenAssignments) {
+            try? data.write(to: screensFile, options: .atomic)
+        }
+    }
+
     func toggleFavorite() {
         guard let slug = currentSlug, !wallpaperTitle.isEmpty else { return }
         if let index = favorites.firstIndex(where: { $0.slug == slug }) {
@@ -110,7 +151,7 @@ final class WallpaperStore: ObservableObject {
             persistFavorites()
             statusState = .favoriteRemoved
         } else {
-            favorites.insert(Favorite(slug: slug, title: wallpaperTitle), at: 0)
+            favorites.insert(Favorite(slug: slug, title: wallpaperTitle, remoteURL: currentRemoteURL?.absoluteString), at: 0)
             persistFavorites()
             loadFavoriteThumbnails()
             statusState = .favoriteAdded
@@ -126,25 +167,58 @@ final class WallpaperStore: ObservableObject {
 
     func applyFavorite(_ favorite: Favorite) async {
         guard !isLoading else { return }
-        let file = imageFolder.appendingPathComponent("\(favorite.slug).jpg")
         do {
-            if !FileManager.default.fileExists(atPath: file.path) {
-                isLoading = true
-                statusState = .fetching(favorite.title)
-                let remote = try await Scraper.detail4KURL(slug: favorite.slug, session: session)
-                try await Scraper.download(remote, to: file, session: session)
-                isLoading = false
-            }
+            let file = try await ensureLocalFile(for: favorite)
             try setAsDesktop(file)
             preview = NSImage(contentsOf: file)
             wallpaperTitle = favorite.title
             currentSlug = favorite.slug
+            currentRemoteURL = favorite.remoteURL.flatMap(URL.init(string:))
             persistState(imageName: file.lastPathComponent)
             statusState = .favoriteApplied
         } catch {
             isLoading = false
             statusState = .error(error.localizedDescription)
         }
+    }
+
+    func assign(_ favorite: Favorite, toScreen index: Int) async {
+        let screens = NSScreen.screens
+        guard screens.indices.contains(index) else { return }
+        do {
+            isLoading = true
+            defer { isLoading = false }
+            let file = try await ensureLocalFile(for: favorite)
+            try setAsDesktop(file, on: screens[index])
+            screenAssignments[String(index)] = favorite
+            persistScreenAssignments()
+            if currentSlug == nil {
+                preview = NSImage(contentsOf: file)
+                wallpaperTitle = favorite.title
+                currentSlug = favorite.slug
+                currentRemoteURL = favorite.remoteURL.flatMap(URL.init(string:))
+                persistState(imageName: file.lastPathComponent)
+            }
+            statusState = .screenAssigned(index: index)
+        } catch {
+            statusState = .error(error.localizedDescription)
+        }
+    }
+
+    private func ensureLocalFile(for favorite: Favorite) async throws -> URL {
+        let file = imageFolder.appendingPathComponent("\(favorite.slug).jpg")
+        if FileManager.default.fileExists(atPath: file.path) { return file }
+        isLoading = true
+        statusState = .fetching(favorite.title)
+        defer { isLoading = false }
+        let remote: URL
+        if let string = favorite.remoteURL, let url = URL(string: string) {
+            remote = url
+        } else {
+            remote = try await Scraper.detail4KURL(slug: favorite.slug, session: session)
+        }
+        try await Scraper.download(remote, to: file, session: session)
+        return file
     }
 
     func loadFavoriteThumbnails() {
@@ -262,34 +336,58 @@ final class WallpaperStore: ObservableObject {
 
         let themed = pool.filter { currentTheme.matches($0.title) }
         let source = themed.isEmpty ? pool : themed
+        let count = usesSeparatePerScreen ? NSScreen.screens.count : 1
+        let picks = pickMany(from: source, count: count)
+        guard !picks.isEmpty else {
+            statusState = .noImages
+            return
+        }
+
+        let screens = NSScreen.screens
+        do {
+            var primaryFile: URL?
+            for (index, choice) in picks.enumerated() where screens.indices.contains(index) {
+                if count > 1 {
+                    statusState = .screenProgress(index + 1, count)
+                } else {
+                    statusState = .fetching(choice.title)
+                }
+                let remote = try await Scraper.detail4KURL(slug: choice.slug, session: session)
+                let file = imageFolder.appendingPathComponent("\(choice.slug).jpg")
+                if count == 1 { statusState = .downloading }
+                try await Scraper.download(remote, to: file, session: session)
+                try setAsDesktop(file, on: screens[index])
+                if index == 0 {
+                    primaryFile = file
+                    preview = NSImage(contentsOf: file)
+                    wallpaperTitle = choice.title
+                    currentSlug = choice.slug
+                    currentRemoteURL = remote
+                }
+                recent.append(choice.slug)
+            }
+            if recent.count > 12 { recent.removeFirst(recent.count - 12) }
+            if let primaryFile {
+                persistState(imageName: primaryFile.lastPathComponent)
+            }
+            statusState = picks.count > 1 ? .perScreenApplied(picks.count) : .applied
+        } catch {
+            statusState = .error(error.localizedDescription)
+        }
+    }
+
+    private func pickMany(from source: [Wallpaper], count: Int) -> [Wallpaper] {
+        guard !source.isEmpty else { return [] }
         var available = source.filter { !recent.contains($0.slug) }
         if available.isEmpty {
             recent.removeAll()
             available = source
         }
-        guard let choice = available.randomElement() else {
-            statusState = .noImages
-            return
+        var picks = available.shuffled()
+        if picks.count < count {
+            picks.append(contentsOf: source.shuffled())
         }
-
-        statusState = .fetching(choice.title)
-        do {
-            let remote = try await Scraper.detail4KURL(slug: choice.slug, session: session)
-            let file = imageFolder.appendingPathComponent("\(choice.slug).jpg")
-            statusState = .downloading
-            try await Scraper.download(remote, to: file, session: session)
-            try setAsDesktop(file)
-            preview = NSImage(contentsOf: file)
-            wallpaperTitle = choice.title
-            currentSlug = choice.slug
-
-            recent.append(choice.slug)
-            if recent.count > 12 { recent.removeFirst(recent.count - 12) }
-            persistState(imageName: file.lastPathComponent)
-            statusState = .applied
-        } catch {
-            statusState = .error(error.localizedDescription)
-        }
+        return Array(picks.prefix(count))
     }
 
     private func nextSpotlight() async {
@@ -299,18 +397,19 @@ final class WallpaperStore: ObservableObject {
         statusState = .searching
 
         let info = SpotlightAPI.localeInfo()
+        let needed = usesSeparatePerScreen ? NSScreen.screens.count : 1
         var collected: [SpotlightImage] = []
         var seen = Set<String>()
         var themed: [SpotlightImage] = []
 
         do {
-            for _ in 0..<6 {
+            for _ in 0..<8 {
                 let batch = try await SpotlightAPI.fetchOnce(locale: info.locale, country: info.country, session: session)
                 for image in batch where seen.insert(image.id).inserted {
                     collected.append(image)
                 }
                 themed = collected.filter { !recent.contains($0.id) && currentTheme.matches($0.searchText) }
-                if themed.count >= 4 { break }
+                if themed.count >= max(needed, 4) { break }
             }
         } catch {
             statusState = .error(error.localizedDescription)
@@ -320,39 +419,60 @@ final class WallpaperStore: ObservableObject {
         let candidates = themed.isEmpty ? collected : themed
         var available = candidates.filter { !recent.contains($0.id) }
         if available.isEmpty { available = candidates }
-        guard let choice = available.randomElement() else {
+        guard !available.isEmpty else {
             statusState = .noImages
             return
         }
 
-        statusState = .fetching(choice.displayTitle)
-        do {
-            let file = imageFolder.appendingPathComponent("\(choice.id).jpg")
-            statusState = .downloading
-            try await Scraper.download(choice.url, to: file, session: session)
-            try setAsDesktop(file)
-            preview = NSImage(contentsOf: file)
-            wallpaperTitle = choice.displayTitle
-            currentSlug = choice.id
+        var picks = available.shuffled()
+        if picks.count < needed {
+            picks.append(contentsOf: candidates.shuffled())
+        }
+        picks = Array(picks.prefix(needed))
 
-            recent.append(choice.id)
+        let screens = NSScreen.screens
+        do {
+            var primaryFile: URL?
+            for (index, choice) in picks.enumerated() where screens.indices.contains(index) {
+                if needed > 1 {
+                    statusState = .screenProgress(index + 1, needed)
+                } else {
+                    statusState = .fetching(choice.displayTitle)
+                }
+                let file = imageFolder.appendingPathComponent("\(choice.id).jpg")
+                if needed == 1 { statusState = .downloading }
+                try await Scraper.download(choice.url, to: file, session: session)
+                try setAsDesktop(file, on: screens[index])
+                if index == 0 {
+                    primaryFile = file
+                    preview = NSImage(contentsOf: file)
+                    wallpaperTitle = choice.displayTitle
+                    currentSlug = choice.id
+                    currentRemoteURL = choice.url
+                }
+                recent.append(choice.id)
+            }
             if recent.count > 12 { recent.removeFirst(recent.count - 12) }
-            persistState(imageName: file.lastPathComponent)
-            statusState = .applied
+            if let primaryFile {
+                persistState(imageName: primaryFile.lastPathComponent)
+            }
+            statusState = picks.count > 1 ? .perScreenApplied(picks.count) : .applied
         } catch {
             statusState = .error(error.localizedDescription)
         }
     }
 
-    private func setAsDesktop(_ url: URL) throws {
-        let screens = NSScreen.screens
-        guard !screens.isEmpty else { return }
+    private func setAsDesktop(_ url: URL, on screen: NSScreen) throws {
         let options: [NSWorkspace.DesktopImageOptionKey: Any] = [
             .imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue,
             .allowClipping: true
         ]
-        for screen in screens {
-            try NSWorkspace.shared.setDesktopImageURL(url, for: screen, options: options)
+        try NSWorkspace.shared.setDesktopImageURL(url, for: screen, options: options)
+    }
+
+    private func setAsDesktop(_ url: URL) throws {
+        for screen in NSScreen.screens {
+            try setAsDesktop(url, on: screen)
         }
     }
 
@@ -374,6 +494,9 @@ enum StoreStatus: Equatable {
     case favoriteAdded
     case favoriteRemoved
     case favoriteApplied
+    case screenProgress(Int, Int)
+    case perScreenApplied(Int)
+    case screenAssigned(index: Int)
     case noImages
     case error(String)
 }

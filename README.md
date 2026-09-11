@@ -18,6 +18,8 @@ desktop background with a single click.
 - **Bilingual interface** – Norwegian and English, switchable at runtime with a
   system-language default.
 - **Favorites** – save the wallpapers you like and re-apply them any time.
+- **Multiple screens** – optionally give each screen its own random wallpaper, or
+  assign a saved favorite to a specific screen.
 - **Sets the desktop background** on every connected screen via `NSWorkspace`.
 - **Remembers your theme** and keeps a local collection of ~1800 wallpapers,
   refreshed automatically every 7 days.
@@ -52,7 +54,10 @@ Developer certificate), Gatekeeper may ask you to confirm the first launch.
    Norsk, and English.
 5. Tap the heart on the preview to add the current wallpaper to **Favorites**.
    Open the heart button in the toolbar to re-apply or remove saved wallpapers.
-6. The current image and its caption are shown in the preview card.
+6. With more than one display, turn on **Wallpaper per screen** in Settings to
+   fetch a separate image for each screen, and use the display button on a
+   favorite to assign it to a specific screen.
+7. The current image and its caption are shown in the preview card.
 
 Themes are matched against the wallpaper's caption text, so several themes can
 overlap. Approximate distribution of the built-in archive:
@@ -132,6 +137,15 @@ wallpapers appear under the heart button in the toolbar, where you can re-apply
 them as the desktop background or remove them. Favorites are stored in
 `~/Library/Application Support/Villblomst/favorites.json`, and the local image
 files are kept so a favorite can be re-applied without downloading it again.
+
+## Multiple screens
+
+Turn on **Wallpaper per screen** in Settings: each press of **New wallpaper**
+then fetches a separate random image for every connected display. You can also
+open Favorites and use the display button on a tile to assign that wallpaper to a
+specific screen; the assigned screen numbers are shown under the tile. Screen
+assignments are stored in
+`~/Library/Application Support/Villblomst/screens.json`.
 
 ## Acknowledgements
 

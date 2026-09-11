@@ -76,6 +76,12 @@ final class Localization: ObservableObject {
             return t("status.favoriteRemoved")
         case .favoriteApplied:
             return t("status.favoriteApplied")
+        case .screenProgress(let index, let total):
+            return String(format: t("status.screenProgress"), index, total)
+        case .perScreenApplied(let count):
+            return String(format: t("status.perScreenApplied"), count)
+        case .screenAssigned(let index):
+            return String(format: t("status.screenAssigned"), index + 1)
         case .noImages:
             return t("status.noImages")
         case .error(let message):
@@ -92,6 +98,9 @@ final class Localization: ObservableObject {
         "settings.imagesCount": "%d bilder",
         "settings.matchSummary": "%d av %d bilder passer til «%@»",
         "settings.spotlightNote": "Spotlight-bilder filtreres også etter valgt tema.",
+        "settings.perscreen.title": "Bakgrunn per skjerm",
+        "settings.perscreen.subtitle": "La hver skjerm få sitt eget tilfeldige bilde",
+        "settings.perscreen.toggle": "Egen bakgrunn per skjerm",
         "settings.help": "Innstillinger",
         "settings.language.title": "Språk",
         "settings.language.subtitle": "Velg språk for grensesnittet",
@@ -109,6 +118,9 @@ final class Localization: ObservableObject {
         "status.favoriteAdded": "Lagt til i favoritter",
         "status.favoriteRemoved": "Fjernet fra favoritter",
         "status.favoriteApplied": "Favoritten er satt som bakgrunn",
+        "status.screenProgress": "Henter bilde %d av %d …",
+        "status.perScreenApplied": "Egen bakgrunn satt på %d skjermer",
+        "status.screenAssigned": "Favoritt satt på skjerm %d",
         "status.noImages": "Fant ingen bilder akkurat nå",
         "status.error": "Noe gikk galt: %@",
         "favorites.title": "Favoritter",
@@ -118,6 +130,10 @@ final class Localization: ObservableObject {
         "favorites.apply": "Bruk som bakgrunn",
         "favorites.remove": "Fjern fra favoritter",
         "favorites.help": "Favoritter",
+        "favorites.assign": "Tildel skjerm",
+        "favorites.assignedScreens": "Skjerm %@",
+        "screen.label": "Skjerm %d",
+        "screen.labelPrimary": "Skjerm %d (hovedskjerm)",
         "theme.alle": "Alle",
         "theme.blomster": "Blomster",
         "theme.natur": "Natur",
@@ -140,6 +156,9 @@ final class Localization: ObservableObject {
         "settings.imagesCount": "%d images",
         "settings.matchSummary": "%d of %d images match “%@”",
         "settings.spotlightNote": "Spotlight images are filtered by the selected theme too.",
+        "settings.perscreen.title": "Wallpaper per screen",
+        "settings.perscreen.subtitle": "Give each screen its own random image",
+        "settings.perscreen.toggle": "Separate wallpaper per screen",
         "settings.help": "Settings",
         "settings.language.title": "Language",
         "settings.language.subtitle": "Choose the interface language",
@@ -157,6 +176,9 @@ final class Localization: ObservableObject {
         "status.favoriteAdded": "Added to favorites",
         "status.favoriteRemoved": "Removed from favorites",
         "status.favoriteApplied": "Favorite applied as wallpaper",
+        "status.screenProgress": "Fetching image %d of %d …",
+        "status.perScreenApplied": "Separate wallpapers set on %d screens",
+        "status.screenAssigned": "Favorite set on screen %d",
         "status.noImages": "No images found right now",
         "status.error": "Something went wrong: %@",
         "favorites.title": "Favorites",
@@ -166,6 +188,10 @@ final class Localization: ObservableObject {
         "favorites.apply": "Apply as wallpaper",
         "favorites.remove": "Remove from favorites",
         "favorites.help": "Favorites",
+        "favorites.assign": "Assign to screen",
+        "favorites.assignedScreens": "Screen %@",
+        "screen.label": "Screen %d",
+        "screen.labelPrimary": "Screen %d (primary)",
         "theme.alle": "All",
         "theme.blomster": "Flowers",
         "theme.natur": "Nature",

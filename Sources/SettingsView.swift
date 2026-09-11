@@ -69,6 +69,34 @@ struct SettingsView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
+                sectionHeader(loc.t("settings.perscreen.title"), loc.t("settings.perscreen.subtitle"))
+                Button {
+                    store.togglePerScreen()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "display.2")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Palette.leafDeep)
+                        Text(loc.t("settings.perscreen.toggle"))
+                            .font(.system(.subheadline, design: .rounded).weight(.medium))
+                            .foregroundStyle(Palette.ink)
+                        Spacer()
+                        SwitchPill(on: store.separatePerScreen)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.9)))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Palette.leaf.opacity(0.25), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
                 sectionHeader(loc.t("settings.language.title"), loc.t("settings.language.subtitle"))
                 HStack(spacing: 8) {
                     ForEach(AppLanguage.allCases) { language in
@@ -171,5 +199,25 @@ private struct ThemeCard: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(.white.opacity(0.9))
         }
+    }
+}
+
+private struct SwitchPill: View {
+    let on: Bool
+
+    var body: some View {
+        Capsule()
+            .fill(on
+                  ? AnyShapeStyle(LinearGradient(colors: [Palette.leaf, Palette.leafDeep],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                  : AnyShapeStyle(Color.gray.opacity(0.35)))
+            .frame(width: 42, height: 24)
+            .overlay(
+                Circle()
+                    .fill(.white)
+                    .frame(width: 18, height: 18)
+                    .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                    .offset(x: on ? 9 : -9)
+            )
     }
 }
