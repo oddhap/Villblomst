@@ -26,6 +26,7 @@ struct ContentView: View {
     @ObservedObject var store: WallpaperStore
     @ObservedObject var loc: Localization
     @State private var showSettings = false
+    @State private var showFavorites = false
 
     var body: some View {
         ZStack {
@@ -113,6 +114,32 @@ struct ContentView: View {
             }
             Spacer()
             Button {
+                showFavorites.toggle()
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: store.favorites.isEmpty ? "heart" : "heart.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(store.favorites.isEmpty ? Palette.leafDeep : Palette.blossom)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(.white.opacity(0.85)))
+                        .overlay(Circle().strokeBorder(Palette.leaf.opacity(0.3), lineWidth: 1))
+                    if !store.favorites.isEmpty {
+                        Text("\(store.favorites.count)")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Palette.leafDeep))
+                            .offset(x: 4, y: -3)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .help(loc.t("favorites.help"))
+            .popover(isPresented: $showFavorites, arrowEdge: .top) {
+                FavoritesView(store: store, loc: loc)
+            }
+            Button {
                 showSettings.toggle()
             } label: {
                 Image(systemName: "gearshape.fill")
@@ -148,6 +175,22 @@ struct ContentView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(Palette.leaf.opacity(0.25), lineWidth: 1)
         )
+        .overlay(alignment: .topTrailing) {
+            if !store.wallpaperTitle.isEmpty {
+                Button {
+                    store.toggleFavorite()
+                } label: {
+                    Image(systemName: store.isCurrentFavorite ? "heart.fill" : "heart")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(store.isCurrentFavorite ? Palette.blossom : .white)
+                        .padding(9)
+                        .background(Circle().fill(.black.opacity(0.3)))
+                }
+                .buttonStyle(.plain)
+                .padding(12)
+                .help(loc.t("favorites.toggle"))
+            }
+        }
         .shadow(color: Palette.leafDeep.opacity(0.18), radius: 16, y: 8)
     }
 

@@ -70,6 +70,12 @@ final class Localization: ObservableObject {
             return t("status.downloading")
         case .applied:
             return t("status.applied")
+        case .favoriteAdded:
+            return t("status.favoriteAdded")
+        case .favoriteRemoved:
+            return t("status.favoriteRemoved")
+        case .favoriteApplied:
+            return t("status.favoriteApplied")
         case .noImages:
             return t("status.noImages")
         case .error(let message):
@@ -97,8 +103,18 @@ final class Localization: ObservableObject {
         "status.fetching": "Henter «%@» i 4K …",
         "status.downloading": "Laster ned 4K-bildet …",
         "status.applied": "Bakgrunnen er satt",
+        "status.favoriteAdded": "Lagt til i favoritter",
+        "status.favoriteRemoved": "Fjernet fra favoritter",
+        "status.favoriteApplied": "Favoritten er satt som bakgrunn",
         "status.noImages": "Fant ingen bilder akkurat nå",
         "status.error": "Noe gikk galt: %@",
+        "favorites.title": "Favoritter",
+        "favorites.subtitle": "Lagrede bakgrunner du kan bruke igjen",
+        "favorites.empty": "Ingen favoritter ennå. Trykk på hjertet i forhåndsvisningen for å lagre et bilde.",
+        "favorites.toggle": "Legg til eller fjern favoritt",
+        "favorites.apply": "Bruk som bakgrunn",
+        "favorites.remove": "Fjern fra favoritter",
+        "favorites.help": "Favoritter",
         "theme.alle": "Alle",
         "theme.blomster": "Blomster",
         "theme.natur": "Natur",
@@ -130,8 +146,18 @@ final class Localization: ObservableObject {
         "status.fetching": "Fetching “%@” in 4K …",
         "status.downloading": "Downloading the 4K image …",
         "status.applied": "Wallpaper applied",
+        "status.favoriteAdded": "Added to favorites",
+        "status.favoriteRemoved": "Removed from favorites",
+        "status.favoriteApplied": "Favorite applied as wallpaper",
         "status.noImages": "No images found right now",
         "status.error": "Something went wrong: %@",
+        "favorites.title": "Favorites",
+        "favorites.subtitle": "Saved wallpapers you can reuse",
+        "favorites.empty": "No favorites yet. Tap the heart on the preview to save an image.",
+        "favorites.toggle": "Add or remove favorite",
+        "favorites.apply": "Apply as wallpaper",
+        "favorites.remove": "Remove from favorites",
+        "favorites.help": "Favorites",
         "theme.alle": "All",
         "theme.blomster": "Flowers",
         "theme.natur": "Nature",

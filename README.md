@@ -17,6 +17,7 @@ desktop background with a single click.
   animals, city, landscape, ocean, space, autumn/winter, or everything).
 - **Bilingual interface** – Norwegian and English, switchable at runtime with a
   system-language default.
+- **Favorites** – save the wallpapers you like and re-apply them any time.
 - **Sets the desktop background** on every connected screen via `NSWorkspace`.
 - **Remembers your theme** and keeps a local collection of ~1800 wallpapers,
   refreshed automatically every 7 days.
@@ -48,7 +49,9 @@ Developer certificate), Gatekeeper may ask you to confirm the first launch.
 3. Click the gear icon (or press `Cmd+,`) to open **Settings** and pick a theme.
 4. Scroll to the **Language** section in Settings to switch between System,
    Norsk, and English.
-5. The current image and its caption are shown in the preview card.
+5. Tap the heart on the preview to add the current wallpaper to **Favorites**.
+   Open the heart button in the toolbar to re-apply or remove saved wallpapers.
+6. The current image and its caption are shown in the preview card.
 
 Themes are matched against the wallpaper's caption text, so several themes can
 overlap. Approximate distribution of the built-in archive:
@@ -87,6 +90,7 @@ Sources/
   VillblomstApp.swift    App entry point and Settings scene
   ContentView.swift      Main window UI and light wildflower theme
   SettingsView.swift     Theme picker and language selector
+  FavoritesView.swift    Saved wallpapers panel
   WallpaperStore.swift   State, caching, download and wallpaper handling
   Scraper.swift          Archive scraping and 4K URL extraction
   Themes.swift           Theme definitions and keyword matching
@@ -108,6 +112,14 @@ selector at the bottom of the Settings panel. The choice is stored in
 <p align="center">
   <img src="docs/screenshot-settings-norwegian.jpg" width="320" alt="Norwegian settings">
 </p>
+
+## Favorites
+
+Tap the heart on the preview card to save the current wallpaper. Saved
+wallpapers appear under the heart button in the toolbar, where you can re-apply
+them as the desktop background or remove them. Favorites are stored in
+`~/Library/Application Support/Villblomst/favorites.json`, and the local image
+files are kept so a favorite can be re-applied without downloading it again.
 
 ## Notes and disclaimer
 

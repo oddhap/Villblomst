@@ -1,5 +1,12 @@
 import SwiftUI
 import AppKit
+import ImageIO
+
+struct Favorite: Codable, Identifiable, Hashable {
+    let slug: String
+    let title: String
+    var id: String { slug }
+}
 
 @MainActor
 final class WallpaperStore: ObservableObject {
@@ -11,9 +18,17 @@ final class WallpaperStore: ObservableObject {
     @Published var themeCounts: [String: Int] = [:]
     @Published var isPreparing = false
     @Published var selectedThemeID: String = UserDefaults.standard.string(forKey: "villblomst.theme") ?? "alle"
+    @Published var favorites: [Favorite] = []
+    @Published var favoriteThumbnails: [String: NSImage] = [:]
+    private(set) var currentSlug: String?
 
     private(set) var statusState: StoreStatus = .idle
     var status: String { Localization.shared.text(for: statusState) }
+
+    var isCurrentFavorite: Bool {
+        guard let slug = currentSlug else { return false }
+        return favorites.contains { $0.slug == slug }
+    }
 
     let themes = WallpaperTheme.all
 
@@ -33,11 +48,13 @@ final class WallpaperStore: ObservableObject {
     private let imageFolder: URL
     private let poolFile: URL
     private let stateFile: URL
+    private let favoritesFile: URL
 
     private struct State: Codable {
         var recent: [String]
         var title: String
         var imageName: String?
+        var currentSlug: String?
     }
 
     init() {
@@ -47,7 +64,9 @@ final class WallpaperStore: ObservableObject {
         imageFolder = support.appendingPathComponent("Wallpapers", isDirectory: true)
         poolFile = support.appendingPathComponent("pool.json")
         stateFile = support.appendingPathComponent("state.json")
+        favoritesFile = support.appendingPathComponent("favorites.json")
         try? FileManager.default.createDirectory(at: imageFolder, withIntermediateDirectories: true)
+        loadFavorites()
         restoreState()
     }
 
@@ -56,11 +75,89 @@ final class WallpaperStore: ObservableObject {
               let state = try? JSONDecoder().decode(State.self, from: data) else { return }
         recent = state.recent
         wallpaperTitle = state.title
+        currentSlug = state.currentSlug
         if let name = state.imageName {
             let url = imageFolder.appendingPathComponent(name)
             preview = NSImage(contentsOf: url)
         }
         loadCachedPool()
+    }
+
+    private func loadFavorites() {
+        guard let data = try? Data(contentsOf: favoritesFile),
+              let saved = try? JSONDecoder().decode([Favorite].self, from: data) else { return }
+        favorites = saved
+    }
+
+    private func persistFavorites() {
+        if let data = try? JSONEncoder().encode(favorites) {
+            try? data.write(to: favoritesFile, options: .atomic)
+        }
+    }
+
+    func toggleFavorite() {
+        guard let slug = currentSlug, !wallpaperTitle.isEmpty else { return }
+        if let index = favorites.firstIndex(where: { $0.slug == slug }) {
+            favorites.remove(at: index)
+            favoriteThumbnails[slug] = nil
+            persistFavorites()
+            statusState = .favoriteRemoved
+        } else {
+            favorites.insert(Favorite(slug: slug, title: wallpaperTitle), at: 0)
+            persistFavorites()
+            loadFavoriteThumbnails()
+            statusState = .favoriteAdded
+        }
+    }
+
+    func removeFavorite(_ favorite: Favorite) {
+        favorites.removeAll { $0.slug == favorite.slug }
+        favoriteThumbnails[favorite.slug] = nil
+        persistFavorites()
+        statusState = .favoriteRemoved
+    }
+
+    func applyFavorite(_ favorite: Favorite) async {
+        guard !isLoading else { return }
+        let file = imageFolder.appendingPathComponent("\(favorite.slug).jpg")
+        do {
+            if !FileManager.default.fileExists(atPath: file.path) {
+                isLoading = true
+                statusState = .fetching(favorite.title)
+                let remote = try await Scraper.detail4KURL(slug: favorite.slug, session: session)
+                try await Scraper.download(remote, to: file, session: session)
+                isLoading = false
+            }
+            try setAsDesktop(file)
+            preview = NSImage(contentsOf: file)
+            wallpaperTitle = favorite.title
+            currentSlug = favorite.slug
+            persistState(imageName: file.lastPathComponent)
+            statusState = .favoriteApplied
+        } catch {
+            isLoading = false
+            statusState = .error(error.localizedDescription)
+        }
+    }
+
+    func loadFavoriteThumbnails() {
+        for favorite in favorites where favoriteThumbnails[favorite.slug] == nil {
+            let url = imageFolder.appendingPathComponent("\(favorite.slug).jpg")
+            if let image = Self.thumbnail(for: url) {
+                favoriteThumbnails[favorite.slug] = image
+            }
+        }
+    }
+
+    private static func thumbnail(for url: URL, maxPixel: CGFloat = 400) -> NSImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 
     private func loadCachedPool() {
@@ -163,6 +260,7 @@ final class WallpaperStore: ObservableObject {
             try setAsDesktop(file)
             preview = NSImage(contentsOf: file)
             wallpaperTitle = choice.title
+            currentSlug = choice.slug
 
             recent.append(choice.slug)
             if recent.count > 12 { recent.removeFirst(recent.count - 12) }
@@ -186,7 +284,7 @@ final class WallpaperStore: ObservableObject {
     }
 
     private func persistState(imageName: String?) {
-        let state = State(recent: recent, title: wallpaperTitle, imageName: imageName)
+        let state = State(recent: recent, title: wallpaperTitle, imageName: imageName, currentSlug: currentSlug)
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: stateFile, options: .atomic)
         }
@@ -200,6 +298,9 @@ enum StoreStatus: Equatable {
     case fetching(String)
     case downloading
     case applied
+    case favoriteAdded
+    case favoriteRemoved
+    case favoriteApplied
     case noImages
     case error(String)
 }
