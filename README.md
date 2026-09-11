@@ -15,6 +15,8 @@ desktop background with a single click.
   full 3840x2160 image.
 - **Theme picker** – choose which kind of images to fetch (flowers, nature,
   animals, city, landscape, ocean, space, autumn/winter, or everything).
+- **Bilingual interface** – Norwegian and English, switchable at runtime with a
+  system-language default.
 - **Sets the desktop background** on every connected screen via `NSWorkspace`.
 - **Remembers your theme** and keeps a local collection of ~1800 wallpapers,
   refreshed automatically every 7 days.
@@ -44,7 +46,9 @@ Developer certificate), Gatekeeper may ask you to confirm the first launch.
 1. Open `Villblomst.app`.
 2. Click **Ny bakgrunn** (*New background*) to fetch and apply a random wallpaper.
 3. Click the gear icon (or press `Cmd+,`) to open **Settings** and pick a theme.
-4. The current image and its caption are shown in the preview card.
+4. Scroll to the **Language** section in Settings to switch between System,
+   Norsk, and English.
+5. The current image and its caption are shown in the preview card.
 
 Themes are matched against the wallpaper's caption text, so several themes can
 overlap. Approximate distribution of the built-in archive:
@@ -82,16 +86,28 @@ The wallpaper pool is cached in
 Sources/
   VillblomstApp.swift    App entry point and Settings scene
   ContentView.swift      Main window UI and light wildflower theme
-  SettingsView.swift     Theme picker panel
+  SettingsView.swift     Theme picker and language selector
   WallpaperStore.swift   State, caching, download and wallpaper handling
   Scraper.swift          Archive scraping and 4K URL extraction
   Themes.swift           Theme definitions and keyword matching
+  Localization.swift     Norwegian/English strings and language handling
 Tools/
   makeicon.swift         Generates the AppIcon.iconset at build time
 Info.plist               App bundle metadata
 build.sh                 One-step build script
 docs/                    Screenshots used in this README
 ```
+
+## Language
+
+The interface ships with Norwegian and English. The default follows the macOS
+system language (`Locale.preferredLanguages`), and you can override it with the
+selector at the bottom of the Settings panel. The choice is stored in
+`UserDefaults` and applied immediately without restarting the app.
+
+<p align="center">
+  <img src="docs/screenshot-settings-norwegian.jpg" width="320" alt="Norwegian settings">
+</p>
 
 ## Notes and disclaimer
 

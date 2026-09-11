@@ -24,6 +24,7 @@ enum Glyph {
 
 struct ContentView: View {
     @ObservedObject var store: WallpaperStore
+    @ObservedObject var loc: Localization
     @State private var showSettings = false
 
     var body: some View {
@@ -106,7 +107,7 @@ struct ContentView: View {
                 Text("Villblomst")
                     .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(Palette.ink)
-                Text("Tilfeldige 4K-bakgrunner · \(store.selectedThemeName)")
+                Text("\(loc.t("tagline")) · \(store.selectedThemeName)")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(Palette.leafDeep.opacity(0.8))
             }
@@ -122,9 +123,9 @@ struct ContentView: View {
                     .overlay(Circle().strokeBorder(Palette.leaf.opacity(0.3), lineWidth: 1))
             }
             .buttonStyle(.plain)
-            .help("Innstillinger")
+            .help(loc.t("settings.help"))
             .popover(isPresented: $showSettings, arrowEdge: .top) {
-                SettingsView(store: store)
+                SettingsView(store: store, loc: loc)
             }
         }
     }
@@ -155,14 +156,14 @@ struct ContentView: View {
             Image(systemName: Glyph.flower)
                 .font(.system(size: 58))
                 .foregroundStyle(Palette.leaf.opacity(0.6))
-            Text("Ingen bakgrunn ennå")
+            Text(loc.t("preview.empty"))
                 .font(.system(.callout, design: .rounded).weight(.medium))
                 .foregroundStyle(Palette.ink.opacity(0.65))
         }
     }
 
     private var caption: some View {
-        Text(store.wallpaperTitle.isEmpty ? "Klar til å hente en bakgrunn" : store.wallpaperTitle)
+        Text(store.wallpaperTitle.isEmpty ? loc.t("preview.ready") : store.wallpaperTitle)
             .font(.system(.footnote, design: .rounded))
             .foregroundStyle(Palette.ink.opacity(0.72))
             .multilineTextAlignment(.center)
@@ -184,7 +185,7 @@ struct ContentView: View {
                     Image(systemName: Glyph.sparkle)
                         .font(.system(size: 17, weight: .semibold))
                 }
-                Text(store.isLoading ? "Henter …" : "Ny bakgrunn")
+                Text(loc.t(store.isLoading ? "button.loading" : "button.new"))
                     .font(.system(.headline, design: .rounded).weight(.semibold))
             }
             .foregroundStyle(.white)
@@ -226,7 +227,7 @@ struct ContentView: View {
                 .font(.system(.caption2, design: .rounded))
             Spacer()
             if store.totalCount > 0 {
-                Text("\(store.poolCount) av \(store.totalCount) bilder")
+                Text(String(format: loc.t("footer.count"), store.poolCount, store.totalCount))
                     .font(.system(.caption2, design: .rounded))
             }
         }

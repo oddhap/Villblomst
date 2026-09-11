@@ -5,7 +5,6 @@ import AppKit
 final class WallpaperStore: ObservableObject {
     @Published var preview: NSImage?
     @Published var wallpaperTitle: String = ""
-    @Published var status: String = "Trykk på knappen for en ny bakgrunn"
     @Published var isLoading = false
     @Published var poolCount: Int = 0
     @Published var totalCount: Int = 0
@@ -13,13 +12,16 @@ final class WallpaperStore: ObservableObject {
     @Published var isPreparing = false
     @Published var selectedThemeID: String = UserDefaults.standard.string(forKey: "villblomst.theme") ?? "alle"
 
+    private(set) var statusState: StoreStatus = .idle
+    var status: String { Localization.shared.text(for: statusState) }
+
     let themes = WallpaperTheme.all
 
     private var currentTheme: WallpaperTheme {
         themes.first { $0.id == selectedThemeID } ?? themes[0]
     }
 
-    var selectedThemeName: String { currentTheme.name }
+    var selectedThemeName: String { Localization.shared.themeName(currentTheme.id) }
 
     private static let themeKey = "villblomst.theme"
 
@@ -85,7 +87,7 @@ final class WallpaperStore: ObservableObject {
         selectedThemeID = theme.id
         UserDefaults.standard.set(theme.id, forKey: Self.themeKey)
         poolCount = themeCounts[theme.id] ?? pool.count
-        status = "Tema: \(theme.name) – \(poolCount) bilder"
+        statusState = .theme(id: theme.id, count: poolCount)
     }
 
     private static let cacheVersion = 2
@@ -111,7 +113,7 @@ final class WallpaperStore: ObservableObject {
         }
         guard !isPreparing else { return }
         isPreparing = true
-        status = "Søker gjennom Bing-arkivet …"
+        statusState = .searching
         let months = Scraper.monthStrings(back: 60)
         let fetched = await Scraper.pool(months: months, session: session)
         if fetched.isEmpty {
@@ -124,7 +126,7 @@ final class WallpaperStore: ObservableObject {
         }
         computeCounts()
         isPreparing = false
-        status = "Tema: \(currentTheme.name) – \(poolCount) bilder"
+        statusState = .theme(id: currentTheme.id, count: poolCount)
     }
 
     func next() async {
@@ -148,15 +150,15 @@ final class WallpaperStore: ObservableObject {
             available = source
         }
         guard let choice = available.randomElement() else {
-            status = "Fant ingen bilder akkurat nå"
+            statusState = .noImages
             return
         }
 
-        status = "Henter «\(choice.title)» i 4K …"
+        statusState = .fetching(choice.title)
         do {
             let remote = try await Scraper.detail4KURL(slug: choice.slug, session: session)
             let file = imageFolder.appendingPathComponent("\(choice.slug).jpg")
-            status = "Laster ned 4K-bildet …"
+            statusState = .downloading
             try await Scraper.download(remote, to: file, session: session)
             try setAsDesktop(file)
             preview = NSImage(contentsOf: file)
@@ -165,9 +167,9 @@ final class WallpaperStore: ObservableObject {
             recent.append(choice.slug)
             if recent.count > 12 { recent.removeFirst(recent.count - 12) }
             persistState(imageName: file.lastPathComponent)
-            status = "Bakgrunnen er satt"
+            statusState = .applied
         } catch {
-            status = "Noe gikk galt: \(error.localizedDescription)"
+            statusState = .error(error.localizedDescription)
         }
     }
 
@@ -189,4 +191,15 @@ final class WallpaperStore: ObservableObject {
             try? data.write(to: stateFile, options: .atomic)
         }
     }
+}
+
+enum StoreStatus: Equatable {
+    case idle
+    case searching
+    case theme(id: String, count: Int)
+    case fetching(String)
+    case downloading
+    case applied
+    case noImages
+    case error(String)
 }
