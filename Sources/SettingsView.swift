@@ -63,6 +63,7 @@ struct SettingsView: View {
                      : loc.t("settings.spotlightNote"))
                     .font(.system(.caption, design: .rounded))
             }
+            .frame(height: 22, alignment: .leading)
             .foregroundStyle(Palette.ink.opacity(0.6))
 
             Divider()
@@ -144,11 +145,9 @@ private struct ThemeCard: View {
                 Text(name)
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(selected ? .white : Palette.ink)
-                if !countLabel.isEmpty {
-                    Text(countLabel)
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(selected ? .white.opacity(0.85) : Palette.ink.opacity(0.55))
-                }
+                Text(countLabel.isEmpty ? " " : countLabel)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(selected ? .white.opacity(0.85) : Palette.ink.opacity(0.55))
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
