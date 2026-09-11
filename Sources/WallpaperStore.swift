@@ -18,12 +18,19 @@ final class WallpaperStore: ObservableObject {
     @Published var themeCounts: [String: Int] = [:]
     @Published var isPreparing = false
     @Published var selectedThemeID: String = UserDefaults.standard.string(forKey: "villblomst.theme") ?? "alle"
+    @Published var sourceID: String = UserDefaults.standard.string(forKey: "villblomst.source") ?? WallpaperSource.bing.rawValue
     @Published var favorites: [Favorite] = []
     @Published var favoriteThumbnails: [String: NSImage] = [:]
     private(set) var currentSlug: String?
 
     private(set) var statusState: StoreStatus = .idle
     var status: String { Localization.shared.text(for: statusState) }
+
+    var source: WallpaperSource { WallpaperSource(rawValue: sourceID) ?? .bing }
+    var sourceName: String { Localization.shared.t("source.\(source.rawValue)") }
+    var sourceAttribution: String {
+        source == .bing ? "bingwallpaper.anerg.com" : "Windows Spotlight (Microsoft)"
+    }
 
     var isCurrentFavorite: Bool {
         guard let slug = currentSlug else { return false }
@@ -187,6 +194,16 @@ final class WallpaperStore: ObservableObject {
         statusState = .theme(id: theme.id, count: poolCount)
     }
 
+    func selectSource(_ source: WallpaperSource) {
+        sourceID = source.rawValue
+        UserDefaults.standard.set(source.rawValue, forKey: "villblomst.source")
+        if source == .bing {
+            statusState = .theme(id: currentTheme.id, count: poolCount)
+        } else {
+            statusState = .idle
+        }
+    }
+
     private static let cacheVersion = 2
 
     private struct CachedPool: Codable {
@@ -227,6 +244,10 @@ final class WallpaperStore: ObservableObject {
     }
 
     func next() async {
+        if source == .spotlight {
+            await nextSpotlight()
+            return
+        }
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
@@ -263,6 +284,58 @@ final class WallpaperStore: ObservableObject {
             currentSlug = choice.slug
 
             recent.append(choice.slug)
+            if recent.count > 12 { recent.removeFirst(recent.count - 12) }
+            persistState(imageName: file.lastPathComponent)
+            statusState = .applied
+        } catch {
+            statusState = .error(error.localizedDescription)
+        }
+    }
+
+    private func nextSpotlight() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        statusState = .searching
+
+        let info = SpotlightAPI.localeInfo()
+        var collected: [SpotlightImage] = []
+        var seen = Set<String>()
+        var themed: [SpotlightImage] = []
+
+        do {
+            for _ in 0..<6 {
+                let batch = try await SpotlightAPI.fetchOnce(locale: info.locale, country: info.country, session: session)
+                for image in batch where seen.insert(image.id).inserted {
+                    collected.append(image)
+                }
+                themed = collected.filter { !recent.contains($0.id) && currentTheme.matches($0.searchText) }
+                if themed.count >= 4 { break }
+            }
+        } catch {
+            statusState = .error(error.localizedDescription)
+            return
+        }
+
+        let candidates = themed.isEmpty ? collected : themed
+        var available = candidates.filter { !recent.contains($0.id) }
+        if available.isEmpty { available = candidates }
+        guard let choice = available.randomElement() else {
+            statusState = .noImages
+            return
+        }
+
+        statusState = .fetching(choice.displayTitle)
+        do {
+            let file = imageFolder.appendingPathComponent("\(choice.id).jpg")
+            statusState = .downloading
+            try await Scraper.download(choice.url, to: file, session: session)
+            try setAsDesktop(file)
+            preview = NSImage(contentsOf: file)
+            wallpaperTitle = choice.displayTitle
+            currentSlug = choice.id
+
+            recent.append(choice.id)
             if recent.count > 12 { recent.removeFirst(recent.count - 12) }
             persistState(imageName: file.lastPathComponent)
             statusState = .applied

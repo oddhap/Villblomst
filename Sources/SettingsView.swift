@@ -11,35 +11,56 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(loc.t("settings.title"))
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(Palette.ink)
-                Text(loc.t("settings.subtitle"))
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(Palette.ink.opacity(0.6))
-            }
-
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(store.themes) { theme in
-                    ThemeCard(
-                        theme: theme,
-                        name: loc.themeName(theme.id),
-                        countLabel: String(format: loc.t("settings.imagesCount"), store.themeCounts[theme.id] ?? 0),
-                        selected: theme.id == store.selectedThemeID
-                    ) {
-                        store.select(theme)
+            VStack(alignment: .leading, spacing: 6) {
+                sectionHeader(loc.t("settings.source.title"), loc.t("settings.source.subtitle"))
+                HStack(spacing: 8) {
+                    ForEach(WallpaperSource.allCases) { source in
+                        Button {
+                            store.selectSource(source)
+                        } label: {
+                            Text(loc.t("source.\(source.rawValue)"))
+                                .font(.system(.subheadline, design: .rounded).weight(.medium))
+                                .foregroundStyle(store.source == source ? .white : Palette.leafDeep)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(selectionBackground(selected: store.source == source))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.top, 2)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                sectionHeader(loc.t("settings.title"), loc.t("settings.subtitle"))
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(store.themes) { theme in
+                        ThemeCard(
+                            theme: theme,
+                            name: loc.themeName(theme.id),
+                            countLabel: store.source == .bing
+                                ? String(format: loc.t("settings.imagesCount"), store.themeCounts[theme.id] ?? 0)
+                                : "",
+                            selected: theme.id == store.selectedThemeID
+                        ) {
+                            store.select(theme)
+                        }
+                    }
+                }
+                .padding(.top, 6)
             }
 
             Divider()
 
             HStack(spacing: 8) {
-                Image(systemName: "photo.on.rectangle.angled")
+                Image(systemName: store.source == .bing ? "photo.on.rectangle.angled" : "info.circle")
                     .font(.system(size: 12))
-                Text(String(format: loc.t("settings.matchSummary"),
-                            store.poolCount, store.totalCount, store.selectedThemeName))
+                Text(store.source == .bing
+                     ? String(format: loc.t("settings.matchSummary"),
+                              store.poolCount, store.totalCount, store.selectedThemeName)
+                     : loc.t("settings.spotlightNote"))
                     .font(.system(.caption, design: .rounded))
             }
             .foregroundStyle(Palette.ink.opacity(0.6))
@@ -47,12 +68,7 @@ struct SettingsView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(loc.t("settings.language.title"))
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(Palette.ink)
-                Text(loc.t("settings.language.subtitle"))
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(Palette.ink.opacity(0.6))
+                sectionHeader(loc.t("settings.language.title"), loc.t("settings.language.subtitle"))
                 HStack(spacing: 8) {
                     ForEach(AppLanguage.allCases) { language in
                         Button {
@@ -63,7 +79,7 @@ struct SettingsView: View {
                                 .foregroundStyle(loc.language == language ? .white : Palette.leafDeep)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
-                                .background(languageBackground(selected: loc.language == language))
+                                .background(selectionBackground(selected: loc.language == language))
                         }
                         .buttonStyle(.plain)
                     }
@@ -76,8 +92,19 @@ struct SettingsView: View {
         .background(Palette.cream)
     }
 
+    private func sectionHeader(_ title: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(.headline, design: .rounded))
+                .foregroundStyle(Palette.ink)
+            Text(subtitle)
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(Palette.ink.opacity(0.6))
+        }
+    }
+
     @ViewBuilder
-    private func languageBackground(selected: Bool) -> some View {
+    private func selectionBackground(selected: Bool) -> some View {
         if selected {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(LinearGradient(colors: [Palette.leaf, Palette.leafDeep],
@@ -117,9 +144,11 @@ private struct ThemeCard: View {
                 Text(name)
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(selected ? .white : Palette.ink)
-                Text(countLabel)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(selected ? .white.opacity(0.85) : Palette.ink.opacity(0.55))
+                if !countLabel.isEmpty {
+                    Text(countLabel)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(selected ? .white.opacity(0.85) : Palette.ink.opacity(0.55))
+                }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)

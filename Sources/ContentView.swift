@@ -108,7 +108,7 @@ struct ContentView: View {
                 Text("Villblomst")
                     .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(Palette.ink)
-                Text("\(loc.t("tagline")) · \(store.selectedThemeName)")
+                Text("\(store.sourceName) · \(store.selectedThemeName)")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(Palette.leafDeep.opacity(0.8))
             }
@@ -266,10 +266,10 @@ struct ContentView: View {
 
     private var footer: some View {
         HStack {
-            Text("bingwallpaper.anerg.com")
+            Text(store.sourceAttribution)
                 .font(.system(.caption2, design: .rounded))
             Spacer()
-            if store.totalCount > 0 {
+            if store.source == .bing, store.totalCount > 0 {
                 Text(String(format: loc.t("footer.count"), store.poolCount, store.totalCount))
                     .font(.system(.caption2, design: .rounded))
             }

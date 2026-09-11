@@ -85,10 +85,13 @@ final class Localization: ObservableObject {
 
     private static let norwegian: [String: String] = [
         "tagline": "Tilfeldige 4K-bakgrunner",
+        "settings.source.title": "Bildekilde",
+        "settings.source.subtitle": "Velg hvor bakgrunnene hentes fra",
         "settings.title": "Bakgrunnstema",
-        "settings.subtitle": "Velg hvilke bilder som skal hentes fra Bing",
+        "settings.subtitle": "Velg hvilke typer bilder som skal hentes",
         "settings.imagesCount": "%d bilder",
         "settings.matchSummary": "%d av %d bilder passer til «%@»",
+        "settings.spotlightNote": "Spotlight-bilder filtreres også etter valgt tema.",
         "settings.help": "Innstillinger",
         "settings.language.title": "Språk",
         "settings.language.subtitle": "Velg språk for grensesnittet",
@@ -98,7 +101,7 @@ final class Localization: ObservableObject {
         "preview.ready": "Klar til å hente en bakgrunn",
         "footer.count": "%d av %d bilder",
         "status.idle": "Trykk på knappen for en ny bakgrunn",
-        "status.searching": "Søker gjennom Bing-arkivet …",
+        "status.searching": "Søker etter bakgrunner …",
         "status.theme": "Tema: %@ – %d bilder",
         "status.fetching": "Henter «%@» i 4K …",
         "status.downloading": "Laster ned 4K-bildet …",
@@ -123,15 +126,20 @@ final class Localization: ObservableObject {
         "theme.landskap": "Landskap",
         "theme.hav": "Hav og vann",
         "theme.verdensrom": "Verdensrom",
-        "theme.host": "Høst og vinter"
+        "theme.host": "Høst og vinter",
+        "source.bing": "Bing Wallpaper",
+        "source.spotlight": "Windows Spotlight"
     ]
 
     private static let english: [String: String] = [
         "tagline": "Random 4K wallpapers",
+        "settings.source.title": "Image source",
+        "settings.source.subtitle": "Choose where wallpapers come from",
         "settings.title": "Wallpaper theme",
-        "settings.subtitle": "Choose which images to fetch from Bing",
+        "settings.subtitle": "Choose which kind of images to fetch",
         "settings.imagesCount": "%d images",
         "settings.matchSummary": "%d of %d images match “%@”",
+        "settings.spotlightNote": "Spotlight images are filtered by the selected theme too.",
         "settings.help": "Settings",
         "settings.language.title": "Language",
         "settings.language.subtitle": "Choose the interface language",
@@ -141,7 +149,7 @@ final class Localization: ObservableObject {
         "preview.ready": "Ready to fetch a wallpaper",
         "footer.count": "%d of %d images",
         "status.idle": "Click the button for a new wallpaper",
-        "status.searching": "Searching the Bing archive …",
+        "status.searching": "Searching for wallpapers …",
         "status.theme": "Theme: %@ – %d images",
         "status.fetching": "Fetching “%@” in 4K …",
         "status.downloading": "Downloading the 4K image …",
@@ -166,6 +174,8 @@ final class Localization: ObservableObject {
         "theme.landskap": "Landscape",
         "theme.hav": "Ocean & water",
         "theme.verdensrom": "Space",
-        "theme.host": "Autumn & winter"
+        "theme.host": "Autumn & winter",
+        "source.bing": "Bing Wallpaper",
+        "source.spotlight": "Windows Spotlight"
     ]
 }

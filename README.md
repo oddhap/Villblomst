@@ -11,8 +11,8 @@ desktop background with a single click.
 
 ## Features
 
-- **Random 4K wallpapers** – scrapes the Bing Wallpaper Archive and downloads the
-  full 3840x2160 image.
+- **Two 4K image sources** – the Bing Wallpaper Archive and Windows Spotlight,
+  both downloaded at full 3840x2160 resolution.
 - **Theme picker** – choose which kind of images to fetch (flowers, nature,
   animals, city, landscape, ocean, space, autumn/winter, or everything).
 - **Bilingual interface** – Norwegian and English, switchable at runtime with a
@@ -46,7 +46,8 @@ Developer certificate), Gatekeeper may ask you to confirm the first launch.
 
 1. Open `Villblomst.app`.
 2. Click **Ny bakgrunn** (*New background*) to fetch and apply a random wallpaper.
-3. Click the gear icon (or press `Cmd+,`) to open **Settings** and pick a theme.
+3. Click the gear icon (or press `Cmd+,`) to open **Settings**, then pick an
+   image source and a theme.
 4. Scroll to the **Language** section in Settings to switch between System,
    Norsk, and English.
 5. Tap the heart on the preview to add the current wallpaper to **Favorites**.
@@ -68,7 +69,9 @@ overlap. Approximate distribution of the built-in archive:
 | Høst og vinter  |         94 |
 | Verdensrom      |         72 |
 
-## How it works
+## Image sources
+
+### Bing Wallpaper Archive
 
 1. `Scraper` fetches monthly archive pages (`/archive/us/yyyyMM`) and collects
    every wallpaper entry (slug + caption).
@@ -83,6 +86,14 @@ overlap. Approximate distribution of the built-in archive:
 The wallpaper pool is cached in
 `~/Library/Application Support/Villblomst/pool.json` for 7 days.
 
+### Windows Spotlight
+
+`SpotlightSource` calls Microsoft's Spotlight selection API
+(`fd.api.iris.microsoft.com/v4/api/selection`) with the system region and
+locale, and asks for landscape images. It requests a few batches, filters them by
+the selected theme, and downloads the chosen image directly at 3840x2160. No
+archive caching is needed because the API returns a fresh batch on every request.
+
 ## Project structure
 
 ```
@@ -92,7 +103,8 @@ Sources/
   SettingsView.swift     Theme picker and language selector
   FavoritesView.swift    Saved wallpapers panel
   WallpaperStore.swift   State, caching, download and wallpaper handling
-  Scraper.swift          Archive scraping and 4K URL extraction
+  Scraper.swift          Bing archive scraping and 4K URL extraction
+  SpotlightSource.swift  Windows Spotlight API client
   Themes.swift           Theme definitions and keyword matching
   Localization.swift     Norwegian/English strings and language handling
 Tools/
@@ -121,13 +133,21 @@ them as the desktop background or remove them. Favorites are stored in
 `~/Library/Application Support/Villblomst/favorites.json`, and the local image
 files are kept so a favorite can be re-applied without downloading it again.
 
+## Acknowledgements
+
+The Windows Spotlight integration is based on the API research and
+implementation in [ORelio/Spotlight-Downloader](https://github.com/ORelio/Spotlight-Downloader),
+which is released under [CDDL-1.0](https://opensource.org/licenses/CDDL-1.0).
+Thanks to ORelio for documenting the Spotlight API endpoints.
+
 ## Notes and disclaimer
 
 - The app is not sandboxed, since setting the desktop picture and writing to
   Application Support from a sandboxed process is restricted.
 - All wallpapers are copyright their respective owners and are provided by the
-  Bing Wallpaper Archive. This project only automates downloading them for
-  personal use; it does not claim any rights to the images.
+  Bing Wallpaper Archive and by Microsoft Windows Spotlight. This project only
+  automates downloading them for personal use; it does not claim any rights to
+  the images.
 
 ## License
 
