@@ -4,6 +4,8 @@ struct FavoritesView: View {
     @ObservedObject var store: WallpaperStore
     @ObservedObject var loc: Localization
 
+    @State private var targetScreen: Int = -1
+
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 10)]
 
     var body: some View {
@@ -17,13 +19,17 @@ struct FavoritesView: View {
                     .foregroundStyle(Palette.ink.opacity(0.6))
             }
 
+            if store.screenCount > 1 {
+                targetPicker
+            }
+
             if store.favorites.isEmpty {
                 emptyState
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(store.favorites) { favorite in
-                            FavoriteTile(store: store, loc: loc, favorite: favorite)
+                            FavoriteTile(store: store, loc: loc, favorite: favorite, targetScreen: targetScreen)
                         }
                     }
                     .padding(.vertical, 2)
@@ -35,6 +41,45 @@ struct FavoritesView: View {
         .frame(width: 400)
         .background(Palette.cream)
         .task { store.loadFavoriteThumbnails() }
+    }
+
+    private var targetPicker: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(loc.t("favorites.target"))
+                .font(.system(.caption, design: .rounded).weight(.medium))
+                .foregroundStyle(Palette.ink.opacity(0.7))
+            HStack(spacing: 6) {
+                targetChip(title: loc.t("favorites.allScreens"), value: -1)
+                ForEach(Array(0..<store.screenCount), id: \.self) { index in
+                    targetChip(title: String(format: loc.t("screen.short"), index + 1), value: index)
+                }
+            }
+        }
+    }
+
+    private func targetChip(title: String, value: Int) -> some View {
+        let selected = targetScreen == value
+        return Button {
+            targetScreen = value
+        } label: {
+            Text(title)
+                .font(.system(.caption, design: .rounded).weight(.medium))
+                .foregroundStyle(selected ? .white : Palette.leafDeep)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(selected
+                              ? AnyShapeStyle(LinearGradient(colors: [Palette.leaf, Palette.leafDeep],
+                                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                              : AnyShapeStyle(.white.opacity(0.9)))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Palette.leaf.opacity(selected ? 0 : 0.25), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
@@ -56,6 +101,7 @@ struct FavoriteTile: View {
     @ObservedObject var store: WallpaperStore
     @ObservedObject var loc: Localization
     let favorite: Favorite
+    let targetScreen: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -86,28 +132,6 @@ struct FavoriteTile: View {
                 .padding(5)
                 .help(loc.t("favorites.remove"))
             }
-            .overlay(alignment: .topLeading) {
-                if store.screenCount > 1 {
-                    Menu {
-                        ForEach(Array(0..<store.screenCount), id: \.self) { index in
-                            Button(store.screenLabel(index)) {
-                                Task { await store.assign(favorite, toScreen: index) }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "display")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(5)
-                            .background(Circle().fill(.black.opacity(0.5)))
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .padding(5)
-                    .help(loc.t("favorites.assign"))
-                }
-            }
 
             Text(favorite.title)
                 .font(.system(.caption2, design: .rounded))
@@ -126,9 +150,15 @@ struct FavoriteTile: View {
         .frame(width: 108, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
-            Task { await store.applyFavorite(favorite) }
+            if targetScreen >= 0 {
+                Task { await store.assign(favorite, toScreen: targetScreen) }
+            } else {
+                Task { await store.applyFavorite(favorite) }
+            }
         }
-        .help(loc.t("favorites.apply"))
+        .help(targetScreen >= 0
+              ? String(format: loc.t("favorites.applyToScreen"), targetScreen + 1)
+              : loc.t("favorites.apply"))
     }
 
     private var assignedScreens: [Int] {

@@ -55,8 +55,9 @@ Developer certificate), Gatekeeper may ask you to confirm the first launch.
 5. Tap the heart on the preview to add the current wallpaper to **Favorites**.
    Open the heart button in the toolbar to re-apply or remove saved wallpapers.
 6. With more than one display, turn on **Wallpaper per screen** in Settings to
-   fetch a separate image for each screen, and use the display button on a
-   favorite to assign it to a specific screen.
+   fetch a separate image for each screen. To place a saved favorite on one
+   screen, open Favorites, pick the screen under **Apply to**, then tap the
+   favorite.
 7. The current image and its caption are shown in the preview card.
 
 Themes are matched against the wallpaper's caption text, so several themes can
@@ -141,9 +142,10 @@ files are kept so a favorite can be re-applied without downloading it again.
 ## Multiple screens
 
 Turn on **Wallpaper per screen** in Settings: each press of **New wallpaper**
-then fetches a separate random image for every connected display. You can also
-open Favorites and use the display button on a tile to assign that wallpaper to a
-specific screen; the assigned screen numbers are shown under the tile. Screen
+then fetches a separate random image for every connected display. To place a
+saved wallpaper on a single screen, open Favorites, choose the target under
+**Apply to** (All screens, Screen 1, Screen 2, …), and tap the favorite. The
+screen numbers a favorite is assigned to are shown under its tile. Screen
 assignments are stored in
 `~/Library/Application Support/Villblomst/screens.json`.
 
